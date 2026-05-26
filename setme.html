@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SET Dividend Interactive Dashboard (.XLSX)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS CDN (For reading .xlsx files directly) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Google Fonts (Sarabun & Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Sarabun', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="h-full text-slate-800">
+
+    <div class="min-h-full flex flex-col">
+        <!-- Header -->
+        <header class="bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-white/10 p-2.5 rounded-lg border border-white/20">
+                        <svg class="w-8 h-8 text-emerald-100" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold tracking-tight">SET Dividend & Investment Dashboard</h1>
+                        <p class="text-xs text-emerald-100/90 mt-0.5">ระบบวิเคราะห์สรุปผลตอบแทนและสัดส่วน % ปันผลรายหุ้นรายปี รองรับการอัปโหลดไฟล์ Excel (.xlsx)</p>
+                    </div>
+                </div>
+                
+                <!-- Quick Controls -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="resetToDefaultData()" class="px-3 py-2 bg-emerald-800/50 hover:bg-emerald-800/80 border border-emerald-500/30 rounded-lg text-xs font-medium transition duration-150 flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 15H19M9 5a9 9 0 010 12l-5-5-1.41 1.41L9 19 21 7"></path></svg>
+                        ใช้ข้อมูลจำลองตั้งต้น
+                    </button>
+                    <label class="cursor-pointer px-4 py-2 bg-white text-emerald-700 hover:bg-emerald-50 rounded-lg text-xs font-semibold shadow transition duration-150 flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        เลือกไฟล์ Excel (.xlsx)
+                        <input type="file" id="xlsxFileInput" accept=".xlsx, .xls" class="hidden" onchange="handleFileSelect(event)">
+                    </label>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            
+            <!-- Drag & Drop Zone (XLSX version) -->
+            <div id="dropZone" class="mb-6 border-2 border-dashed border-emerald-300 hover:border-emerald-500 rounded-xl bg-emerald-50/5 p-6 text-center transition duration-150 cursor-pointer hidden md:block"
+                 ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+                <div class="flex flex-col items-center justify-center space-y-2">
+                    <div class="p-3 bg-white rounded-full text-emerald-500 shadow-xs border border-emerald-100" id="dropIcon">
+                        <!-- SVG Document Icon representing Excel -->
+                        <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <p class="text-sm font-semibold text-slate-700">ลากไฟล์ Excel (.xlsx) ของคุณมาวางตรงนี้ หรือคลิกเพื่อเลือกไฟล์</p>
+                    <p class="text-xs text-slate-400">ระบบจะประมวลผลค้นหาข้อมูลจากชีต "Data_SET" หรือชีตหลักให้อัตโนมัติ โดยรองรับแถวว่างหัวกระดาษ</p>
+                </div>
+            </div>
+
+            <!-- Dashboard Overview Stats (KPIs) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <!-- KPI 1: Total Investment -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-5 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">พอร์ตลงทุนรวมทั้งหมด</p>
+                        <h3 class="text-2xl font-bold text-slate-900 mt-1" id="kpiTotalInvestment">฿0.00</h3>
+                        <p class="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-indigo-500"></span>
+                            มูลค่าเงินต้นสะสมในพอร์ต
+                        </p>
+                    </div>
+                    <div class="p-3 bg-indigo-50 rounded-lg text-indigo-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                </div>
+
+                <!-- KPI 2: Total Dividends -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-5 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">เงินปันผลสะสมทั้งหมด</p>
+                        <h3 class="text-2xl font-bold text-emerald-600 mt-1" id="kpiTotalDividends">฿0.00</h3>
+                        <p class="text-xs text-slate-500 mt-1 flex items-center gap-1" id="kpiAverageYield">
+                            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                            Yield รวมสะสม: 0.00%
+                        </p>
+                    </div>
+                    <div class="p-3 bg-emerald-50 rounded-lg text-emerald-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5a2 2 0 10-2 2h2zm0 0h4l-1.9 3h-2.1m1.9-3V4"></path></svg>
+                    </div>
+                </div>
+
+                <!-- KPI 3: Net Cash Dividend -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-5 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">เงินปันผลสุทธิ (หลังหักภาษี)</p>
+                        <h3 class="text-2xl font-bold text-teal-600 mt-1" id="kpiNetDividends">฿0.00</h3>
+                        <p class="text-xs text-slate-500 mt-1 flex items-center gap-1" id="kpiTaxWithheld">
+                            <span class="inline-block w-2 h-2 rounded-full bg-amber-500"></span>
+                            ภาษีหัก ณ ที่จ่ายรวม: ฿0.00
+                        </p>
+                    </div>
+                    <div class="p-3 bg-teal-50 rounded-lg text-teal-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                </div>
+
+                <!-- KPI 4: Stock Count -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-5 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">จำนวนหลักทรัพย์ในพอร์ต</p>
+                        <h3 class="text-2xl font-bold text-purple-600 mt-1" id="kpiStockCount">0 หุ้น</h3>
+                        <p class="text-xs text-slate-500 mt-1 flex items-center gap-1" id="kpiTransCount">
+                            <span class="inline-block w-2 h-2 rounded-full bg-purple-500"></span>
+                            ธุรกรรมทั้งหมด: 0 รายการ
+                        </p>
+                    </div>
+                    <div class="p-3 bg-purple-50 rounded-lg text-purple-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Annual Stock Dividend Yield % Matrix -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 mb-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <span class="inline-block p-1 bg-emerald-100 text-emerald-700 rounded-md">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                            </span>
+                            ตารางสรุปผลตอบแทน % ปันผลรายหุ้นรายปี (Annual Stock Dividend Yield % Matrix)
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">
+                            สูตรการคำนวณ: <span class="bg-slate-100 px-1 py-0.5 rounded font-mono text-slate-600">(เงินปันผลที่ได้รับในปีนั้น / เงินลงทุนสะสมรวมของหุ้นตัวนั้นจนถึงปีดังกล่าว) &times; 100</span>
+                        </p>
+                    </div>
+                    <span id="activeSheetLabel" class="self-start sm:self-center px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-100">
+                        ชีตปัจจุบัน: ข้อมูลตั้งต้น
+                    </span>
+                </div>
+                
+                <div class="overflow-x-auto custom-scrollbar border border-slate-100 rounded-xl">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-slate-50">
+                            <tr id="matrixHeader">
+                                <!-- Generated Dynamically -->
+                            </tr>
+                        </thead>
+                        <tbody id="matrixBody" class="bg-white divide-y divide-slate-200 text-sm">
+                            <!-- Generated Dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Year-on-Year Comparison Table -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900">สรุปการเงินพอร์ตรวมรายปี (Year-over-Year Portfolio Summary)</h2>
+                        <p class="text-xs text-slate-500">เปรียบเทียบเงินต้นรวมปะทะเงินปันผลสุทธิและค่าเฉลี่ย Yield พอร์ตรวมในแต่ละปี</p>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">ปี (Year)</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">เงินลงทุนเพิ่มในปีนั้น (THB)</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">เงินลงทุนสะสมรวม (THB)</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">ปันผลที่ได้รับ (THB)</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">ภาษีหัก ณ ที่จ่าย (THB)</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">เงินปันผลสุทธิ (THB)</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-emerald-600 uppercase tracking-wider bg-emerald-50">Yield พอร์ตรวม (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="yoyTableBody" class="bg-white divide-y divide-slate-200 text-sm">
+                            <!-- JS Will insert rows dynamically here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Grid of Interactive Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <!-- CHART 1: Grouped Bar Chart of % Yields by Stock & Year -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-5 lg:col-span-2">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900">กราฟเปรียบเทียบ % อัตราการปันผลรายหุ้นในแต่ละปี</h3>
+                            <p class="text-xs text-slate-500">แสดงความคุ้มค่าของการจ่ายปันผล (% Yield) ของหลักทรัพย์ในแต่ละปีเปรียบเทียบกัน</p>
+                        </div>
+                    </div>
+                    <div class="h-80 w-full">
+                        <canvas id="yieldComparisonChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- CHART 2: Portfolio Allocation by Invested Value -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900">สัดส่วนเงินลงทุนสะสม (%)</h3>
+                            <p class="text-xs text-slate-500">แบ่งตามสัดส่วนเงินต้นรวมที่ซื้อเพิ่มสะสมแยกรายหุ้น</p>
+                        </div>
+                    </div>
+                    <div class="h-80 w-full flex items-center justify-center relative">
+                        <canvas id="allocationChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- More Visualizations & Stock List Analysis -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <!-- CHART 3: Dividends by Stock (The Golden Goose Chart) -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900">ยอดเงินปันผลสะสมรวม (THB)</h3>
+                            <p class="text-xs text-slate-500">สรุปเงินได้จากปันผลรวมทั้งหมดตั้งแต่เริ่มเปิดพอร์ตแยกตามรายตัว</p>
+                        </div>
+                    </div>
+                    <div class="h-80 w-full">
+                        <canvas id="stockDivChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Stock Breakdown Card List -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-5 lg:col-span-2">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900">รายงานประสิทธิภาพสะสมรายหุ้น (Stock Summary)</h3>
+                            <p class="text-xs text-slate-500">ภาพรวมจำนวนหุ้น ต้นทุนเฉลี่ย และผลตอบแทนปันผลสะสม ณ ปัจจุบัน</p>
+                        </div>
+                    </div>
+                    <div class="overflow-y-auto max-h-[320px] custom-scrollbar grid grid-cols-1 sm:grid-cols-2 gap-4" id="stockAnalysisGrid">
+                        <!-- Stock cards will render here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transaction Log Table & Editor Section -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">ประวัติการบันทึกธุรกรรม (Transaction History)</h3>
+                        <p class="text-xs text-slate-500 mt-1">รายการซื้อหุ้นเพิ่มและการรับปันผลทั้งหมดที่ประมวลผลอยู่</p>
+                    </div>
+                    
+                    <!-- Search, Filter & Quick Add Buttons -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <!-- Search Box -->
+                        <div class="relative">
+                            <input type="text" id="tableSearch" onkeyup="filterTransactions()" placeholder="ค้นหาหุ้น หรือวันที่..." class="w-full sm:w-48 pl-8 pr-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                            <span class="absolute left-2.5 top-2.5 text-slate-400">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </span>
+                        </div>
+                        
+                        <!-- Filter Year -->
+                        <select id="filterYear" onchange="filterTransactions()" class="py-1.5 px-2.5 border border-slate-300 rounded-lg text-xs outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white">
+                            <option value="">ทุกปี (All Years)</option>
+                        </select>
+
+                        <!-- Filter Type -->
+                        <select id="filterType" onchange="filterTransactions()" class="py-1.5 px-2.5 border border-slate-300 rounded-lg text-xs outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white">
+                            <option value="">ทุกประเภท</option>
+                            <option value="purchase">ซื้อหุ้นเพิ่ม (Purchase)</option>
+                            <option value="dividend">รับปันผล (Dividend)</option>
+                        </select>
+
+                        <!-- Export to XLSX -->
+                        <button onclick="exportToExcel()" class="py-1.5 px-3 border border-slate-300 hover:bg-slate-50 rounded-lg text-xs font-semibold flex items-center gap-1.5 text-slate-600 transition duration-150">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            ส่งออก Excel
+                        </button>
+
+                        <!-- Add Record Button -->
+                        <button onclick="toggleAddModal(true)" class="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition duration-150">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            เพิ่มรายการ
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Responsive Table Wrapper -->
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="min-w-full divide-y divide-slate-200" id="transTable">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">วันที่ (Date)</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">รายการหุ้น (Stock)</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">ประเภทธุรกรรม</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">จำนวนหุ้นเพิ่ม (Shares)</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">มูลค่าที่ซื้อเพิ่ม (Value)</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">เงินปันผล (Dividend)</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">หักที่จ่าย (Tax 10%)</th>
+                                <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionTableBody" class="bg-white divide-y divide-slate-200">
+                            <!-- Dynamic Content -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State Message -->
+                <div id="emptyState" class="hidden py-12 text-center text-slate-500">
+                    <svg class="mx-auto h-12 w-12 text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <p class="text-sm font-medium">ไม่พบรายการข้อมูลในระบบ</p>
+                    <p class="text-xs text-slate-400 mt-1">กรุณาลากหรืออัปโหลดไฟล์ Excel ใหม่เพื่ออัปเดตข้อมูลพอร์ต</p>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-white border-t border-slate-100 py-6 mt-12">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-400 space-y-2">
+                <p>© 2026 SET Dividend Portfolio Analyzer. รองรับการประมวลผลผ่านไฟล์สเปรดชีต Excel</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Add/Edit Transaction Modal -->
+    <div id="addModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-xl shadow-xl border border-slate-100 w-full max-w-md overflow-hidden transform transition-all">
+            <div class="bg-emerald-600 text-white px-6 py-4 flex items-center justify-between">
+                <h3 class="font-bold text-base" id="modalTitle">เพิ่มรายการธุรกรรมใหม่</h3>
+                <button onclick="toggleAddModal(false)" class="text-white/80 hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <form id="transactionForm" onsubmit="saveTransaction(event)" class="p-6 space-y-4">
+                <input type="hidden" id="editIndex" value="-1">
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">วันที่ธุรกรรม</label>
+                        <input type="date" id="inputDate" required class="w-full p-2 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-emerald-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">รายการหุ้น</label>
+                        <input type="text" id="inputStock" required placeholder="เช่น ARROW" class="w-full p-2 border border-slate-300 rounded-lg text-xs uppercase focus:ring-1 focus:ring-emerald-500 outline-none">
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-3">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">ข้อมูลการซื้อหลักทรัพย์เพิ่ม (ถ้ามี)</p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">จำนวนหุ้นที่เพิ่มขึ้น</label>
+                            <input type="number" id="inputShares" min="0" placeholder="เช่น 500" class="w-full p-2 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-emerald-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">มูลค่าเงินซื้อรวม (บาท)</label>
+                            <input type="number" step="0.01" id="inputValue" min="0" placeholder="เช่น 3900" class="w-full p-2 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-emerald-500 outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-3">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">ข้อมูลผลตอบแทนปันผลที่ได้รับ (ถ้ามี)</p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">เงินปันผลที่ได้รับ (บาท)</label>
+                            <input type="number" step="0.01" id="inputDividend" min="0" placeholder="เช่น 130" class="w-full p-2 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-emerald-500 outline-none" oninput="calculateDefaults()">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">หักภาษี ณ ที่จ่าย (บาท)</label>
+                            <input type="number" step="0.01" id="inputTax" min="0" placeholder="เช่น 13" class="w-full p-2 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-emerald-500 outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-4 flex items-center justify-end space-x-2">
+                    <button type="button" onclick="toggleAddModal(false)" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-semibold transition duration-150">ยกเลิก</button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow transition duration-150">บันทึกรายการ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Alert Modal Box -->
+    <div id="customAlert" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 text-center">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-emerald-100 text-emerald-600 mb-4" id="alertIconBox">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            </div>
+            <h3 class="text-base font-bold text-slate-900 mb-2" id="alertTitle">การแจ้งเตือน</h3>
+            <p class="text-xs text-slate-500 mb-5" id="alertMessage">ข้อความแจ้งเตือน</p>
+            <button onclick="closeAlert()" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow transition duration-150">ตกลง</button>
+        </div>
+    </div>
+
+    <script>
+        // Default initial simulated data representing structure of Data_SET sheet
+        let dataset = [
+            { date: '2023-06-01', stock: 'CPF', shares: 400, value: 8424.00, dividend: 70.00, tax: 7.00 },
+            { date: '2023-06-01', stock: 'DRT', shares: 500, value: 3900.00, dividend: 130.00, tax: 13.00 },
+            { date: '2023-06-01', stock: 'BGC', shares: 0, value: 0.00, dividend: 16.00, tax: 1.60 },
+            { date: '2023-06-01', stock: 'ARROW', shares: 0, value: 0.00, dividend: 125.00, tax: 12.50 },
+            { date: '2023-12-01', stock: 'ARROW', shares: 800, value: 5832.00, dividend: 80.00, tax: 8.00 },
+            { date: '2023-12-01', stock: 'BGC', shares: 200, value: 2004.00, dividend: 12.00, tax: 1.20 },
+            { date: '2023-12-01', stock: 'DRT', shares: 0, value: 0.00, dividend: 130.00, tax: 13.00 },
+            { date: '2023-12-01', stock: 'BGC', shares: 0, value: 0.00, dividend: 12.00, tax: 1.20 },
+            { date: '2024-05-10', stock: 'DRT', shares: 0, value: 0.00, dividend: 130.00, tax: 13.00 },
+            { date: '2024-05-09', stock: 'TPIPP', shares: 0, value: 0.00, dividend: 12.00, tax: 0.00 },
+            { date: '2024-05-17', stock: 'BGC', shares: 0, value: 0.00, dividend: 16.00, tax: 1.60 },
+            { date: '2024-05-23', stock: 'ARROW', shares: 0, value: 0.00, dividend: 200.00, tax: 20.00 },
+            { date: '2024-05-13', stock: 'DRT', shares: 200, value: 1622.72, dividend: 0.00, tax: 0.00 },
+            { date: '2024-05-14', stock: 'TPIPP', shares: 200, value: 661.11, dividend: 0.00, tax: 0.00 },
+            { date: '2024-05-24', stock: 'SMIT', shares: 200, value: 918.00, dividend: 28.00, tax: 2.80 },
+            { date: '2024-09-06', stock: 'DRT', shares: 0, value: 0.00, dividend: 130.00, tax: 13.00 },
+            { date: '2024-09-06', stock: 'ARROW', shares: 0, value: 0.00, dividend: 100.00, tax: 10.00 },
+            { date: '2024-09-06', stock: 'BGC', shares: 0, value: 0.00, dividend: 12.00, tax: 1.20 },
+            { date: '2024-09-06', stock: 'TPIPP', shares: 0, value: 0.00, dividend: 10.00, tax: 1.00 },
+            { date: '2024-09-06', stock: 'SMIT', shares: 0, value: 0.00, dividend: 16.00, tax: 1.60 },
+            { date: '2025-05-15', stock: 'ARROW', shares: 0, value: 0.00, dividend: 200.00, tax: 20.00 },
+            { date: '2025-05-15', stock: 'BGC', shares: 0, value: 0.00, dividend: 15.00, tax: 1.50 },
+            { date: '2025-05-15', stock: 'DRT', shares: 0, value: 0.00, dividend: 130.00, tax: 13.00 },
+            { date: '2025-09-12', stock: 'ARROW', shares: 0, value: 0.00, dividend: 150.00, tax: 15.00 },
+            { date: '2025-09-12', stock: 'BGC', shares: 0, value: 0.00, dividend: 15.00, tax: 1.50 },
+            { date: '2025-09-12', stock: 'DRT', shares: 0, value: 0.00, dividend: 130.00, tax: 13.00 },
+            { date: '2026-05-18', stock: 'ARROW', shares: 0, value: 0.00, dividend: 180.00, tax: 18.00 },
+            { date: '2026-05-18', stock: 'BGC', shares: 0, value: 0.00, dividend: 20.00, tax: 2.00 },
+            { date: '2026-05-18', stock: 'DRT', shares: 0, value: 0.00, dividend: 120.00, tax: 12.00 }
+        ];
+
+        const defaultDataset = JSON.parse(JSON.stringify(dataset));
+
+        // Chart pointers
+        let yieldComparisonChartInstance = null;
+        let allocationChartInstance = null;
+        let stockDivChartInstance = null;
+
+        window.onload = function() {
+            processDataAndRefreshDashboard();
+        };
+
+        function resetToDefaultData() {
+            dataset = JSON.parse(JSON.stringify(defaultDataset));
+            document.getElementById('activeSheetLabel').innerText = "ชีตปัจจุบัน: ข้อมูลจำลองพอร์ต";
+            processDataAndRefreshDashboard();
+            showAlert('รีเซ็ตสำเร็จ', 'โหลดพอร์ตลงทุนตั้งต้นจำลองเรียบร้อยแล้ว', 'success');
+        }
+
+        function processDataAndRefreshDashboard() {
+            dataset.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            populateYearFilterOptions();
+            calculateKPIs();
+            renderYoYSummaryTable();
+            renderAnnualStockMatrix();
+            renderStockAnalysisCards();
+            renderTransactionTable();
+            initCharts();
+        }
+
+        const numSafe = (v) => isNaN(parseFloat(v)) ? 0 : parseFloat(v);
+
+        function calculateKPIs() {
+            let totalInvestment = 0;
+            let totalDividends = 0;
+            let totalTaxWithheld = 0;
+            let stocksInPortfolio = new Set();
+
+            dataset.forEach(item => {
+                totalInvestment += numSafe(item.value);
+                totalDividends += numSafe(item.dividend);
+                totalTaxWithheld += numSafe(item.tax);
+                if (item.stock && item.stock.trim() !== '') {
+                    stocksInPortfolio.add(item.stock.toUpperCase().trim());
+                }
+            });
+
+            const netDividends = totalDividends - totalTaxWithheld;
+            const avgYield = totalInvestment > 0 ? (totalDividends / totalInvestment) * 100 : 0;
+
+            document.getElementById('kpiTotalInvestment').innerText = formatCurrency(totalInvestment);
+            document.getElementById('kpiTotalDividends').innerText = formatCurrency(totalDividends);
+            document.getElementById('kpiAverageYield').innerText = `Yield รวมพอร์ต: ${avgYield.toFixed(2)}%`;
+            document.getElementById('kpiNetDividends').innerText = formatCurrency(netDividends);
+            document.getElementById('kpiTaxWithheld').innerText = `หัก ณ ที่จ่ายรวม: ${formatCurrency(totalTaxWithheld)}`;
+            document.getElementById('kpiStockCount').innerText = `${stocksInPortfolio.size} บริษัท`;
+            document.getElementById('kpiTransCount').innerText = `ธุรกรรมรวม: ${dataset.length} รายการ`;
+        }
+
+        // Generate Year-Over-Year metrics
+        function getYoYMetrics() {
+            const yoyData = {};
+
+            dataset.forEach(item => {
+                const year = new Date(item.date).getFullYear();
+                if (isNaN(year)) return;
+
+                if (!yoyData[year]) {
+                    yoyData[year] = {
+                        year: year,
+                        newInvestment: 0,
+                        dividends: 0,
+                        tax: 0
+                    };
+                }
+
+                yoyData[year].newInvestment += numSafe(item.value);
+                yoyData[year].dividends += numSafe(item.dividend);
+                yoyData[year].tax += numSafe(item.tax);
+            });
+
+            const sortedYears = Object.keys(yoyData).sort();
+            let runningInvestmentTotal = 0;
+
+            return sortedYears.map(year => {
+                const yearObj = yoyData[year];
+                runningInvestmentTotal += yearObj.newInvestment;
+                const yearYield = runningInvestmentTotal > 0 ? (yearObj.dividends / runningInvestmentTotal) * 100 : 0;
+
+                return {
+                    year: yearObj.year,
+                    newInvestment: yearObj.newInvestment,
+                    cumulativeInvestment: runningInvestmentTotal,
+                    dividends: yearObj.dividends,
+                    tax: yearObj.tax,
+                    netDividends: yearObj.dividends - yearObj.tax,
+                    yield: yearYield
+                };
+            });
+        }
+
+        function renderYoYSummaryTable() {
+            const yoyMetrics = getYoYMetrics();
+            const tbody = document.getElementById('yoyTableBody');
+            tbody.innerHTML = '';
+
+            if (yoyMetrics.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-4 text-center text-xs text-slate-400">ไม่มีข้อมูลพอร์ต</td></tr>`;
+                return;
+            }
+
+            yoyMetrics.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors';
+                tr.innerHTML = `
+                    <td class="px-6 py-3.5 whitespace-nowrap text-sm font-bold text-slate-900">${row.year}</td>
+                    <td class="px-6 py-3.5 whitespace-nowrap text-right text-sm text-slate-600 font-medium">${formatCurrency(row.newInvestment)}</td>
+                    <td class="px-6 py-3.5 whitespace-nowrap text-right text-sm text-slate-900 font-semibold">${formatCurrency(row.cumulativeInvestment)}</td>
+                    <td class="px-6 py-3.5 whitespace-nowrap text-right text-sm text-emerald-600 font-semibold">${formatCurrency(row.dividends)}</td>
+                    <td class="px-6 py-3.5 whitespace-nowrap text-right text-sm text-amber-600">${formatCurrency(row.tax)}</td>
+                    <td class="px-6 py-3.5 whitespace-nowrap text-right text-sm text-teal-600 font-semibold">${formatCurrency(row.netDividends)}</td>
+                    <td class="px-6 py-3.5 whitespace-nowrap text-right text-sm font-bold text-emerald-700 bg-emerald-50/50">${row.yield.toFixed(2)}%</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Calculate detailed annual metrics per stock
+        function getMatrixData() {
+            const stocks = new Set();
+            const years = new Set();
+
+            dataset.forEach(item => {
+                const name = item.stock.toUpperCase().trim();
+                const yr = new Date(item.date).getFullYear();
+                if (name) stocks.add(name);
+                if (!isNaN(yr)) years.add(yr);
+            });
+
+            const sortedStocks = Array.from(stocks).sort();
+            const sortedYears = Array.from(years).sort();
+
+            const matrix = {};
+            sortedStocks.forEach(s => {
+                matrix[s] = {};
+                sortedYears.forEach(y => {
+                    matrix[s][y] = {
+                        dividend: 0,
+                        investmentInYear: 0,
+                        cumulativeCostUpToYear: 0
+                    };
+                });
+            });
+
+            dataset.forEach(item => {
+                const s = item.stock.toUpperCase().trim();
+                const itemYr = new Date(item.date).getFullYear();
+                if (!s || isNaN(itemYr)) return;
+
+                matrix[s][itemYr].dividend += numSafe(item.dividend);
+                matrix[s][itemYr].investmentInYear += numSafe(item.value);
+            });
+
+            sortedStocks.forEach(s => {
+                let accumulatedCost = 0;
+                sortedYears.forEach(y => {
+                    accumulatedCost += matrix[s][y].investmentInYear;
+                    matrix[s][y].cumulativeCostUpToYear = accumulatedCost;
+                });
+            });
+
+            return { sortedStocks, sortedYears, matrix };
+        }
+
+        function renderAnnualStockMatrix() {
+            const { sortedStocks, sortedYears, matrix } = getMatrixData();
+
+            const headerRow = document.getElementById('matrixHeader');
+            const tbody = document.getElementById('matrixBody');
+
+            headerRow.innerHTML = '';
+            tbody.innerHTML = '';
+
+            if (sortedStocks.length === 0 || sortedYears.length === 0) {
+                headerRow.innerHTML = `<th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">รายชื่อหุ้น</th>`;
+                tbody.innerHTML = `<tr><td class="px-6 py-4 text-center text-xs text-slate-400">กรุณาอัปโหลดไฟล์ Excel ของท่านเพื่อวิเคราะห์ผลการดำเนินการ</td></tr>`;
+                return;
+            }
+
+            headerRow.innerHTML = `
+                <th scope="col" class="px-6 py-4.5 text-left text-xs font-bold text-slate-600 uppercase tracking-wider bg-slate-100">รายชื่อหุ้น (Stock Name)</th>
+            `;
+            sortedYears.forEach(year => {
+                headerRow.innerHTML += `
+                    <th scope="col" class="px-6 py-4.5 text-right text-xs font-bold text-slate-600 uppercase tracking-wider bg-slate-100">${year} (ปันผล / % Yield)</th>
+                `;
+            });
+            headerRow.innerHTML += `
+                <th scope="col" class="px-6 py-4.5 text-right text-xs font-bold text-slate-800 uppercase tracking-wider bg-slate-200">ปันผลสะสมรวม (บาท)</th>
+            `;
+
+            sortedStocks.forEach(stock => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors border-b border-slate-100';
+
+                let totalStockDiv = 0;
+                let cellsHTML = `<td class="px-6 py-4.5 whitespace-nowrap text-sm font-bold text-slate-900 border-r border-slate-100">${stock}</td>`;
+
+                sortedYears.forEach(year => {
+                    const data = matrix[stock][year];
+                    totalStockDiv += data.dividend;
+
+                    const divText = data.dividend > 0 ? `฿${data.dividend.toLocaleString()}` : '-';
+                    let yieldText = '-';
+                    let yieldBgClass = 'text-slate-400';
+
+                    if (data.cumulativeCostUpToYear > 0 && data.dividend > 0) {
+                        const yrYield = (data.dividend / data.cumulativeCostUpToYear) * 100;
+                        yieldText = `${yrYield.toFixed(2)}%`;
+                        
+                        if (yrYield >= 7) yieldBgClass = 'text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100';
+                        else if (yrYield >= 4) yieldBgClass = 'text-teal-600 font-semibold bg-teal-50 px-1.5 py-0.5 rounded';
+                        else yieldBgClass = 'text-slate-600 font-medium bg-slate-100/70 px-1.5 py-0.5 rounded';
+                    }
+
+                    cellsHTML += `
+                        <td class="px-6 py-4.5 whitespace-nowrap text-right">
+                            <div class="text-xs font-semibold text-slate-800">${divText}</div>
+                            <div class="text-[11px] mt-1 ${yieldBgClass}">${yieldText}</div>
+                        </td>
+                    `;
+                });
+
+                cellsHTML += `
+                    <td class="px-6 py-4.5 whitespace-nowrap text-right font-bold text-emerald-600 bg-slate-50/50">
+                        ${formatCurrency(totalStockDiv)}
+                    </td>
+                `;
+
+                tr.innerHTML = cellsHTML;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderStockAnalysisCards() {
+            const stockSummary = {};
+
+            dataset.forEach(item => {
+                const name = item.stock.toUpperCase().trim();
+                if (!name) return;
+
+                if (!stockSummary[name]) {
+                    stockSummary[name] = {
+                        shares: 0,
+                        invested: 0,
+                        dividends: 0,
+                        tax: 0
+                    };
+                }
+
+                stockSummary[name].shares += numSafe(item.shares);
+                stockSummary[name].invested += numSafe(item.value);
+                stockSummary[name].dividends += numSafe(item.dividend);
+                stockSummary[name].tax += numSafe(item.tax);
+            });
+
+            const grid = document.getElementById('stockAnalysisGrid');
+            grid.innerHTML = '';
+
+            const stocks = Object.keys(stockSummary).sort();
+            
+            if (stocks.length === 0) {
+                grid.innerHTML = `<div class="col-span-full py-8 text-center text-slate-400 text-xs">ไม่มีข้อมูลหลักทรัพย์รายหุ้น</div>`;
+                return;
+            }
+
+            stocks.forEach(name => {
+                const data = stockSummary[name];
+                const yieldPercent = data.invested > 0 ? (data.dividends / data.invested) * 100 : 0;
+                
+                const card = document.createElement('div');
+                card.className = 'bg-slate-50 border border-slate-200/60 hover:border-emerald-500 rounded-xl p-4 transition duration-150 flex flex-col justify-between';
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-2 mb-2">
+                            <span class="text-sm font-bold text-slate-900 tracking-wider">${name}</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${data.shares > 0 ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700'}">
+                                ${data.shares > 0 ? 'มีพอร์ตสะสม' : 'ปันผลเปล่า'}
+                            </span>
+                        </div>
+                        <div class="space-y-1.5 text-xs">
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">หุ้นสะสมทั้งหมด:</span>
+                                <span class="font-semibold text-slate-800">${data.shares.toLocaleString()} หุ้น</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">เงินลงทุนสะสม:</span>
+                                <span class="font-semibold text-slate-800">${formatCurrency(data.invested)}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">ปันผลสะสมรวม:</span>
+                                <span class="font-semibold text-emerald-600">${formatCurrency(data.dividends)}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">ภาษีหัก ณ ที่จ่ายสะสม:</span>
+                                <span class="font-semibold text-amber-600">${formatCurrency(data.tax)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs font-semibold">
+                        <span class="text-slate-400">Yield รวมสะสม:</span>
+                        <span class="text-emerald-600 text-sm font-bold">${yieldPercent.toFixed(2)}%</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function renderTransactionTable() {
+            const tbody = document.getElementById('transactionTableBody');
+            tbody.innerHTML = '';
+
+            const filterYearVal = document.getElementById('filterYear').value;
+            const filterTypeVal = document.getElementById('filterType').value;
+            const searchVal = document.getElementById('tableSearch').value.toLowerCase().trim();
+
+            let visibleCount = 0;
+
+            dataset.forEach((item, index) => {
+                const itemYear = new Date(item.date).getFullYear();
+                const stockName = item.stock.toUpperCase();
+                
+                const isPurchase = numSafe(item.value) > 0 || numSafe(item.shares) > 0;
+                const isDiv = numSafe(item.dividend) > 0;
+
+                if (filterYearVal && itemYear.toString() !== filterYearVal) return;
+                if (filterTypeVal === 'purchase' && !isPurchase) return;
+                if (filterTypeVal === 'dividend' && !isDiv) return;
+
+                if (searchVal && 
+                    !stockName.includes(searchVal) && 
+                    !item.date.includes(searchVal)) {
+                    return;
+                }
+
+                visibleCount++;
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors text-xs';
+                tr.innerHTML = `
+                    <td class="px-6 py-3 whitespace-nowrap text-slate-500 font-medium">${item.date}</td>
+                    <td class="px-6 py-3 whitespace-nowrap font-bold text-slate-900 tracking-wider">${stockName}</td>
+                    <td class="px-6 py-3 whitespace-nowrap">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${isPurchase ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}">
+                            ${isPurchase ? 'ซื้อหุ้นเพิ่ม' : 'รับปันผลเท่านั้น'}
+                        </span>
+                    </td>
+                    <td class="px-6 py-3 whitespace-nowrap text-right text-slate-600">${numSafe(item.shares) > 0 ? numSafe(item.shares).toLocaleString() : '-'}</td>
+                    <td class="px-6 py-3 whitespace-nowrap text-right text-slate-900 font-semibold">${numSafe(item.value) > 0 ? formatCurrency(item.value) : '-'}</td>
+                    <td class="px-6 py-3 whitespace-nowrap text-right text-emerald-600 font-semibold">${numSafe(item.dividend) > 0 ? formatCurrency(item.dividend) : '-'}</td>
+                    <td class="px-6 py-3 whitespace-nowrap text-right text-amber-600">${numSafe(item.tax) > 0 ? formatCurrency(item.tax) : '-'}</td>
+                    <td class="px-6 py-3 whitespace-nowrap text-center space-x-1.5">
+                        <button onclick="editTransaction(${index})" class="text-indigo-600 hover:text-indigo-900 font-medium">แก้ไข</button>
+                        <button onclick="confirmDeleteTransaction(${index})" class="text-rose-600 hover:text-rose-900 font-medium">ลบ</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            const emptyState = document.getElementById('emptyState');
+            if (visibleCount === 0) {
+                emptyState.classList.remove('hidden');
+                document.getElementById('transTable').classList.add('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                document.getElementById('transTable').classList.remove('hidden');
+            }
+        }
+
+        function filterTransactions() {
+            renderTransactionTable();
+        }
+
+        function populateYearFilterOptions() {
+            const select = document.getElementById('filterYear');
+            const years = new Set();
+            
+            dataset.forEach(item => {
+                const year = new Date(item.date).getFullYear();
+                if (!isNaN(year)) years.add(year);
+            });
+
+            const sortedYears = Array.from(years).sort();
+            const currentSelection = select.value;
+            select.innerHTML = '<option value="">ทุกปี (All Years)</option>';
+
+            sortedYears.forEach(year => {
+                const opt = document.createElement('option');
+                opt.value = year;
+                opt.textContent = `${year}`;
+                select.appendChild(opt);
+            });
+
+            if (years.has(parseInt(currentSelection))) {
+                select.value = currentSelection;
+            }
+        }
+
+        // Initialize and Update Chart Graphs
+        function initCharts() {
+            const { sortedStocks, sortedYears, matrix } = getMatrixData();
+
+            // --- CHART 1: Grouped Bar Chart of % Yields by Stock & Year ---
+            const yieldCanvas = document.getElementById('yieldComparisonChart');
+            if (yieldComparisonChartInstance) yieldComparisonChartInstance.destroy();
+
+            const chartColors = [
+                '#10b981', '#4f46e5', '#f59e0b', '#ec4899', '#3b82f6', 
+                '#8b5cf6', '#06b6d4', '#14b8a6', '#f43f5e', '#64748b'
+            ];
+
+            const datasets = sortedStocks.map((stock, idx) => {
+                const dataPoints = sortedYears.map(year => {
+                    const cell = matrix[stock][year];
+                    if (cell.cumulativeCostUpToYear > 0 && cell.dividend > 0) {
+                        return parseFloat(((cell.dividend / cell.cumulativeCostUpToYear) * 100).toFixed(2));
+                    }
+                    return 0;
+                });
+
+                return {
+                    label: stock,
+                    data: dataPoints,
+                    backgroundColor: chartColors[idx % chartColors.length],
+                    borderRadius: 4,
+                    borderWidth: 1,
+                    borderColor: '#ffffff'
+                };
+            });
+
+            yieldComparisonChartInstance = new Chart(yieldCanvas, {
+                type: 'bar',
+                data: {
+                    labels: sortedYears,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { boxWidth: 12, font: { family: 'Sarabun', size: 11 } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.dataset.label}: ${context.parsed.y}% Yield`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'อัตราเงินปันผลต่อปี (%)', font: { family: 'Sarabun', size: 12 } },
+                            ticks: {
+                                callback: function(value) { return value + '%'; }
+                            }
+                        },
+                        x: {
+                            title: { display: true, text: 'ปีการปันผล', font: { family: 'Sarabun', size: 12 } }
+                        }
+                    }
+                }
+            });
+
+            // --- CHART 2: Allocation Doughnut Chart ---
+            const allocCanvas = document.getElementById('allocationChart');
+            if (allocationChartInstance) allocationChartInstance.destroy();
+
+            const stockCosts = sortedStocks.map(stock => {
+                return dataset.filter(i => i.stock.toUpperCase().trim() === stock)
+                              .reduce((sum, current) => sum + numSafe(current.value), 0);
+            });
+
+            const activeStocks = sortedStocks.filter((_, i) => stockCosts[i] > 0);
+            const activeCosts = stockCosts.filter(cost => cost > 0);
+
+            allocationChartInstance = new Chart(allocCanvas, {
+                type: 'doughnut',
+                data: {
+                    labels: activeStocks,
+                    datasets: [{
+                        data: activeCosts,
+                        backgroundColor: chartColors.slice(1, activeStocks.length + 1),
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { boxWidth: 10, font: { size: 11, family: 'Sarabun' } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const sum = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((context.parsed / sum) * 100).toFixed(1);
+                                    return ` ${context.label}: ${formatCurrency(context.parsed)} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '65%'
+                }
+            });
+
+            // --- CHART 3: Cumulative Dividends Bar Chart ---
+            const divCanvas = document.getElementById('stockDivChart');
+            if (stockDivChartInstance) stockDivChartInstance.destroy();
+
+            const stockDivs = sortedStocks.map(stock => {
+                return dataset.filter(i => i.stock.toUpperCase().trim() === stock)
+                              .reduce((sum, current) => sum + numSafe(current.dividend), 0);
+            });
+
+            const stockDivData = sortedStocks.map((stock, idx) => ({ name: stock, val: stockDivs[idx] }))
+                                             .sort((a, b) => b.val - a.val);
+
+            stockDivChartInstance = new Chart(divCanvas, {
+                type: 'bar',
+                data: {
+                    labels: stockDivData.map(d => d.name),
+                    datasets: [{
+                        label: 'ปันผลสะสมรวม',
+                        data: stockDivData.map(d => d.val),
+                        backgroundColor: 'rgba(20, 184, 166, 0.75)',
+                        borderColor: 'rgb(20, 184, 166)',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ปันผลสะสม: ${formatCurrency(context.parsed.x)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'ปันผลสะสมทั้งหมด (บาท)', font: { family: 'Sarabun' } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function formatCurrency(val) {
+            return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(val);
+        }
+
+        function toggleAddModal(show) {
+            const modal = document.getElementById('addModal');
+            const form = document.getElementById('transactionForm');
+            
+            if (show) {
+                document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
+                document.getElementById('modalTitle').innerText = 'เพิ่มรายการธุรกรรมใหม่';
+                document.getElementById('editIndex').value = '-1';
+                form.reset();
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function calculateDefaults() {
+            const divVal = parseFloat(document.getElementById('inputDividend').value);
+            if (!isNaN(divVal) && divVal > 0) {
+                document.getElementById('inputTax').value = (divVal * 0.1).toFixed(2);
+            }
+        }
+
+        function saveTransaction(e) {
+            e.preventDefault();
+
+            const date = document.getElementById('inputDate').value;
+            const stock = document.getElementById('inputStock').value.toUpperCase().trim();
+            const shares = parseInt(document.getElementById('inputShares').value) || 0;
+            const value = parseFloat(document.getElementById('inputValue').value) || 0;
+            const dividend = parseFloat(document.getElementById('inputDividend').value) || 0;
+            const tax = parseFloat(document.getElementById('inputTax').value) || 0;
+            const editIndex = parseInt(document.getElementById('editIndex').value);
+
+            if (!date || !stock) {
+                showAlert('กรุณาใส่ข้อมูลให้ครบถ้วน', 'ต้องทำการกรอก วันที่ และ รายการหุ้น อย่างชัดเจน', 'error');
+                return;
+            }
+
+            const transRecord = { date, stock, shares, value, dividend, tax };
+
+            if (editIndex > -1) {
+                dataset[editIndex] = transRecord;
+                showAlert('บันทึกข้อมูลเรียบร้อย', `แก้ไขรายการธุรกรรมของหุ้น ${stock} สำเร็จ`, 'success');
+            } else {
+                dataset.push(transRecord);
+                showAlert('เพิ่มธุรกรรมใหม่แล้ว', `เพิ่มข้อมูลความคืบหน้าของพอร์ตหุ้น ${stock} เรียบร้อย`, 'success');
+            }
+
+            toggleAddModal(false);
+            processDataAndRefreshDashboard();
+        }
+
+        function editTransaction(index) {
+            const item = dataset[index];
+            if (!item) return;
+
+            document.getElementById('editIndex').value = index;
+            document.getElementById('modalTitle').innerText = `แก้ไขรายการธุรกรรม #${index + 1}`;
+            
+            document.getElementById('inputDate').value = item.date;
+            document.getElementById('inputStock').value = item.stock;
+            document.getElementById('inputShares').value = item.shares || '';
+            document.getElementById('inputValue').value = item.value || '';
+            document.getElementById('inputDividend').value = item.dividend || '';
+            document.getElementById('inputTax').value = item.tax || '';
+
+            document.getElementById('addModal').classList.remove('hidden');
+        }
+
+        function confirmDeleteTransaction(index) {
+            const item = dataset[index];
+            if (!item) return;
+
+            const alertModal = document.getElementById('customAlert');
+            const alertTitle = document.getElementById('alertTitle');
+            const alertMessage = document.getElementById('alertMessage');
+            const alertIconBox = document.getElementById('alertIconBox');
+
+            alertTitle.innerText = "ยืนยันการลบรายการ?";
+            alertMessage.innerText = `คุณแน่ใจหรือไม่ว่าต้องการลบรายการธุรกรรมของ ${item.stock} วันที่ ${item.date}?`;
+            alertIconBox.className = "mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-rose-100 text-rose-600 mb-4";
+            alertIconBox.innerHTML = `<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
+
+            const footer = alertModal.querySelector('button').parentNode;
+            const originalButton = alertModal.querySelector('button');
+            originalButton.classList.add('hidden');
+
+            const confirmBtnGroup = document.createElement('div');
+            confirmBtnGroup.id = "alertConfirmGroup";
+            confirmBtnGroup.className = "flex gap-2 w-full";
+            confirmBtnGroup.innerHTML = `
+                <button onclick="abortDelete()" class="w-1/2 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold shadow transition duration-150">ยกเลิก</button>
+                <button onclick="executeDelete(${index})" class="w-1/2 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold shadow transition duration-150">ใช่, ลบเลย</button>
+            `;
+            footer.appendChild(confirmBtnGroup);
+
+            alertModal.classList.remove('hidden');
+        }
+
+        function abortDelete() {
+            closeAlert();
+        }
+
+        function executeDelete(index) {
+            dataset.splice(index, 1);
+            closeAlert();
+            processDataAndRefreshDashboard();
+            showAlert('ลบรายการแล้ว', 'ลบข้อมูลธุรกรรมออกจากพอร์ตเรียบร้อย', 'success');
+        }
+
+        function closeAlert() {
+            document.getElementById('customAlert').classList.add('hidden');
+            const confirmGroup = document.getElementById('alertConfirmGroup');
+            if (confirmGroup) confirmGroup.remove();
+            
+            const mainButton = document.getElementById('customAlert').querySelector('button');
+            mainButton.classList.remove('hidden');
+        }
+
+        function showAlert(title, message, type = 'success') {
+            const modal = document.getElementById('customAlert');
+            document.getElementById('alertTitle').innerText = title;
+            document.getElementById('alertMessage').innerText = message;
+            
+            const iconBox = document.getElementById('alertIconBox');
+            if (type === 'success') {
+                iconBox.className = "mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-emerald-100 text-emerald-600 mb-4";
+                iconBox.innerHTML = `<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+            } else {
+                iconBox.className = "mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-rose-100 text-rose-600 mb-4";
+                iconBox.innerHTML = `<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            const zone = document.getElementById('dropZone');
+            zone.classList.add('border-emerald-500', 'bg-emerald-50/20');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            const zone = document.getElementById('dropZone');
+            zone.classList.remove('border-emerald-500', 'bg-emerald-50/20');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            handleDragLeave(e);
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                parseXLSXFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                parseXLSXFile(files[0]);
+            }
+        }
+
+        // Parse Excel file using SheetJS library
+        function parseXLSXFile(file) {
+            const nameLower = file.name.toLowerCase();
+            if (!nameLower.endsWith('.xlsx') && !nameLower.endsWith('.xls')) {
+                showAlert('ไฟล์ไม่ถูกต้อง', 'กรุณาอัปโหลดไฟล์สเปรดชีต Excel (.xlsx หรือ .xls) เท่านั้น', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Search for sheet with "data" or "Data_SET" in name
+                    let targetSheetName = workbook.SheetNames[0];
+                    for (let name of workbook.SheetNames) {
+                        const lowName = name.toLowerCase();
+                        if (lowName.includes('data_set') || lowName.includes('data')) {
+                            targetSheetName = name;
+                            break;
+                        }
+                    }
+                    
+                    const worksheet = workbook.Sheets[targetSheetName];
+                    // Convert to 2D array (header: 1) to inspect rows dynamically
+                    const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+                    
+                    processUploadedXLSXData(rawRows, targetSheetName);
+                } catch (err) {
+                    console.error(err);
+                    showAlert('เกิดข้อผิดพลาด', 'ไม่สามารถอ่านโครงสร้างไฟล์ Excel นี้ได้', 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Process XLSX rows dynamically with header row scanning
+        function processUploadedXLSXData(rows, sheetName) {
+            if (!rows || rows.length === 0) {
+                showAlert('ชีตว่างเปล่า', `ไม่พบแถวข้อมูลใดๆ ในชีต "${sheetName}"`, 'error');
+                return;
+            }
+
+            // Find valid header row containing common thai/english labels
+            let headerIdx = -1;
+            const dateHeaders = ['วันที่', 'date'];
+            const stockHeaders = ['รายการหุ้น', 'หุ้น', 'stock', 'symbol'];
+
+            for (let i = 0; i < Math.min(rows.length, 12); i++) {
+                const row = rows[i];
+                if (!row || !Array.isArray(row)) continue;
+
+                let hasDate = false;
+                let hasStock = false;
+
+                row.forEach(cell => {
+                    if (cell !== undefined && cell !== null) {
+                        const cellStr = cell.toString().toLowerCase().trim();
+                        if (dateHeaders.some(p => cellStr.includes(p))) hasDate = true;
+                        if (stockHeaders.some(p => cellStr.includes(p))) hasStock = true;
+                    }
+                });
+
+                if (hasDate && hasStock) {
+                    headerIdx = i;
+                    break;
+                }
+            }
+
+            // Fallback to first row if scanning fails
+            if (headerIdx === -1) {
+                headerIdx = 0;
+            }
+
+            const headers = rows[headerIdx].map(h => h ? h.toString().trim() : '');
+
+            const dateKeys = ['วันที่', 'date', 'transaction_date'];
+            const stockKeys = ['รายการหุ้น', 'หุ้น', 'stock', 'symbol', 'รายการ'];
+            const sharesKeys = ['จำนวนหุ้น', 'shares', 'qty', 'volume'];
+            const valueKeys = ['มูลค่าหุ้น', 'มูลค่าการซื้อ', 'value', 'amount', 'cost'];
+            const divKeys = ['ปันผล', 'เงินปันผล', 'dividend', 'div'];
+            const taxKeys = ['หักที่จ่าย', 'หัก ณ ที่จ่าย', 'ภาษี', 'tax'];
+
+            const findIndex = (patterns) => headers.findIndex(h => patterns.some(p => h.toLowerCase().includes(p.toLowerCase())));
+
+            const dateColIdx = findIndex(dateKeys);
+            const stockColIdx = findIndex(stockKeys);
+            const sharesColIdx = findIndex(sharesKeys);
+            const valueColIdx = findIndex(valueKeys);
+            const divColIdx = findIndex(divKeys);
+            const taxColIdx = findIndex(taxKeys);
+
+            if (dateColIdx === -1 || stockColIdx === -1) {
+                showAlert('หัวตารางไม่สอดคล้อง', `ไม่พบคอลัมน์ "วันที่" และ "รายการหุ้น" ในหัวตารางแถวที่ ${headerIdx + 1} ของชีต "${sheetName}"`, 'error');
+                return;
+            }
+
+            const importedDataset = [];
+
+            for (let i = headerIdx + 1; i < rows.length; i++) {
+                const row = rows[i];
+                if (!row || row.length === 0) continue;
+
+                const dateRaw = row[dateColIdx];
+                const stockRaw = row[stockColIdx];
+
+                // Skip if main fields are blank
+                if (dateRaw === undefined || dateRaw === null || dateRaw.toString().trim() === '' ||
+                    stockRaw === undefined || stockRaw === null || stockRaw.toString().trim() === '') {
+                    continue;
+                }
+
+                let formattedDate = "";
+                if (typeof dateRaw === 'number') {
+                    // Excel numeric date code to ISO representation
+                    formattedDate = excelDateToISO(dateRaw);
+                } else {
+                    formattedDate = cleanDateString(dateRaw.toString());
+                }
+
+                const sharesVal = parseFloat(row[sharesColIdx]) || 0;
+                const valueVal = parseFloat(row[valueColIdx]) || 0;
+                const divVal = parseFloat(row[divColIdx]) || 0;
+                const taxVal = parseFloat(row[taxColIdx]) || 0;
+
+                importedDataset.push({
+                    date: formattedDate,
+                    stock: stockRaw.toString().toUpperCase().trim(),
+                    shares: sharesVal,
+                    value: valueVal,
+                    dividend: divVal,
+                    tax: taxVal
+                });
+            }
+
+            if (importedDataset.length === 0) {
+                showAlert('ไม่สามารถนำเข้าข้อมูลได้', 'ไม่พบรายการธุรกรรมที่สมบูรณ์ภายใต้โครงสร้างหัวตารางนี้', 'error');
+                return;
+            }
+
+            dataset = importedDataset;
+            document.getElementById('activeSheetLabel').innerText = `ชีตปัจจุบัน: ${sheetName}`;
+            processDataAndRefreshDashboard();
+            showAlert('นำเข้าสำเร็จ', `โหลดธุรกรรมจำนวน ${dataset.length} รายการ จากสเปรดชีต Excel เรียบร้อยแล้ว`, 'success');
+        }
+
+        // Convert Excel Serial Dates back to standard ISO dates safely
+        function excelDateToISO(serial) {
+            // Adjust for leap year bug in Excel
+            const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+            const date = new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000);
+            return date.toISOString().split('T')[0];
+        }
+
+        function cleanDateString(dateStr) {
+            let clean = dateStr.trim();
+            
+            // Check if BE year format (Buddhist Era BE 25XX -> AD 20XX)
+            const matchYear = clean.match(/(\d{4})/);
+            if (matchYear) {
+                const year = parseInt(matchYear[1]);
+                if (year > 2500) {
+                    clean = clean.replace(year.toString(), (year - 543).toString());
+                }
+            }
+            return clean;
+        }
+
+        // Export data directly back to Excel using SheetJS
+        function exportToExcel() {
+            if (dataset.length === 0) {
+                showAlert('ไม่พบข้อมูล', 'ไม่มีรายการพอร์ตสำหรับส่งออกไฟล์', 'error');
+                return;
+            }
+
+            // Map standard dataset keys to thai representation
+            const excelRows = dataset.map(item => ({
+                'วันที่': item.date,
+                'รายการหุ้น': item.stock,
+                'จำนวนหุ้น': item.shares || 0,
+                'มูลค่าหุ้น': item.value || 0,
+                'ปันผล': item.dividend || 0,
+                'หักที่จ่าย': item.tax || 0
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(excelRows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Data_SET");
+
+            // Write and trigger browser download
+            XLSX.writeFile(workbook, `SET_Dividend_Dashboard_Export_${new Date().toISOString().split('T')[0]}.xlsx`);
+        }
+    </script>
+</body>
+</html>
